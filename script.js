@@ -20,6 +20,43 @@ function importNewTrelloCards() {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME);
 
-    let data = sheet.getDataRange().getValues();
+  let data = sheet.getDataRange().getValues();
+  
+  // If the first row is not headers or the table is empty
+  if (data.length === 0 || data[0][0] !== 'Назва') {
+    sheet.clear();
+    sheet.appendRow(['Назва', 'Опис', 'Дата створення', 'URL']);
+    data = [['Назва', 'Опис', 'Дата створення', 'URL']]; //update locally
+  }
     
+  // Build a map of existing cards by URL
+  const urlToRowIndex = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const url = row[3]; //URL column
+    if (url) {
+      urlToRowIndex[url] = i + 1; // +1 for getRange (because row's count starts from 1)
+    }
+  }
+
+  // Sort cards by creation date
+  const sortedCards = cards.sort((a, b) => getCardCreationDate(a.id) - getCardCreationDate(b.id));
+
+  sortedCards.forEach(card => {
+    const createdDate = getCardCreationDate(card.id);
+    const url = card.shortUrl;
+    const name = "" + card.name;
+    const desc = card.desc;
+
+    if (urlToRowIndex[url]) {
+      // Update an existing row
+      const row = urlToRowIndex[url];
+      sheet.getRange(row, 1).setValue(name);
+      sheet.getRange(row, 2).setValue(desc);
+      // Creation date is not updated
+    } else {
+      // Add a new row
+      sheet.appendRow([name, desc, createdDate, url]);
+    }
+  });
 }
